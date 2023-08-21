@@ -2,7 +2,7 @@
 #include <thread>
 #include "tf2/LinearMath/Matrix3x3.h"
 #include "tf2/LinearMath/Quaternion.h"
-#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 #include <tf2_ros/static_transform_broadcaster.h>
 
 using namespace std::chrono_literals;
@@ -44,6 +44,7 @@ void VzenseManager::sigsegv_handler(int sig)
     signal(SIGSEGV, SIG_DFL);
     cout<<"Segmentation fault, stopping camera driver : %" << sig <<endl;
     rclcpp::shutdown();
+    exit();
 }
 bool VzenseManager::initDCAM(int32_t device_index)
 { 
@@ -57,19 +58,27 @@ bool VzenseManager::initDCAM(int32_t device_index)
     }
    // Get number of available devices
     uint32_t device_count = 0;
-GET:
-    int checkDeviceSec = 0;
-    status = VZ_GetDeviceCount(&device_count);
-    if (status != VzReturnStatus::VzRetOK)
+    uint16_t try_timeout = 10;
+    while(true)
     {
-        RCLCPP_INFO(this->get_logger(), "VzGetDeviceCount failed! %d" ,status);
-        return false;
-    }
-    RCLCPP_INFO(this->get_logger(), "Get device count: %d" ,device_count); 
-    if (0 == device_count)
-    {
+        int checkDeviceSec = 0;
+        status = VZ_GetDeviceCount(&device_count);
+        if (status != VzReturnStatus::VzRetOK)
+        {
+            RCLCPP_INFO(this->get_logger(), "VzGetDeviceCount failed! %d" ,status);
+            return false;
+        }
+        RCLCPP_INFO(this->get_logger(), "Get device count: %d" ,device_count); 
+        if (device_count > 0)
+        {
+            break;
+        }
+        if(try_timeout == 0){
+            RCLCPP_INFO(this->get_logger(), "Did not find sensor!");
+            return false;
+        }
+        try_timeout--;
         this_thread::sleep_for(chrono::seconds(1));
-        goto GET;
     }
     VzDeviceInfo* pPsDeviceInfo = new VzDeviceInfo;
     status =  VZ_GetDeviceInfo(device_index,pPsDeviceInfo);

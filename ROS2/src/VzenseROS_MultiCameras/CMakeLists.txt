@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.5)
 set(CMAKE_INSTALL_RPATH "$ORIGIN/")
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-project(VzenseROS_MultiCameras)
+project(vzenseros_multicameras)
 
 # Default to C99
 if(NOT CMAKE_C_STANDARD)

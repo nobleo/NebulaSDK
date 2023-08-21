@@ -16,7 +16,7 @@
 #include <cv_bridge/cv_bridge.h>
 
 // 用来发布和订阅图像信息
-#include <image_transport/image_transport.h>
+#include <image_transport/image_transport.hpp>
 #include "std_msgs/msg/string.hpp"
 #include <rcl_interfaces/msg/parameter_event.hpp>
 #include "pcl_conversions/pcl_conversions.h"

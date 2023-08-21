@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
 set(CMAKE_INSTALL_RPATH "$ORIGIN/")
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-project(VzenseROS)
+project(vzenseros)
 
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
@@ -25,8 +25,10 @@ find_package(std_msgs REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
 find_package(pcl_conversions REQUIRED) 
 find_package(PCL REQUIRED COMPONENTS common io)
+find_package(image_transport REQUIRED)
 #find_package(boost REQUIRED)
 
 add_definitions(${PCL_DEFINITIONS})
@@ -52,6 +54,8 @@ include_directories(include include dependencies/Include ${OpenCV_INCLUDE_DIRS} 
  /usr/include/eigen3/
  /usr/include/boost/)
 
+ include_directories(${tf2_geometry_msgs_INCLUDE_DIRS})
+ include_directories(${tf2_ros_INCLUDE_DIRS})
  
  
 LINK_DIRECTORIES(
@@ -64,7 +68,26 @@ add_executable(vzense_camera src/vzense_driver.cpp
 file(GLOB PCL_LIBRARIES /usr/lib/x86_64-linux-gnu/libpcl_*)
                                  
 target_link_libraries(vzense_camera  ${libNebula_api} ${OpenCV_LIBRARIES} ${PCL_LIBRARIES} ${Boost_LIBRARIES})
-ament_target_dependencies(vzense_camera rclcpp sensor_msgs std_msgs cv_bridge tf2 tf2_ros pcl_conversions)
+
+set(dependencies
+  cv_bridge
+  image_transport
+  rclcpp
+  rclcpp_components
+  std_msgs
+  sensor_msgs
+  tf2
+  tf2_geometry_msgs
+  tf2_ros
+  pcl_conversions
+)
+
+# ament_target_dependencies(vzense_camera rclcpp sensor_msgs std_msgs cv_bridge tf2 tf2_geometry_msgs image_transport tf2_ros pcl_conversions)
+
+ament_target_dependencies(vzense_camera
+  ${dependencies}
+)
+
 
 install(
   DIRECTORY dependencies/Lib/ 
@@ -75,5 +98,7 @@ install(TARGETS
   vzense_camera
   DESTINATION lib/${PROJECT_NAME}
 )
+
+ament_export_dependencies(${dependencies})
 
 ament_package()
