@@ -9,7 +9,7 @@ using namespace std::chrono_literals;
 
 VzenseManager::VzenseManager(int32_t device_index,std::string camera_name) :
         Node(camera_name),
-        camera_name_(camera_name),      
+        camera_name_(camera_name),
         rgb_width_(-1),
         rgb_height_(-1),
         slope_(1450),
@@ -17,20 +17,20 @@ VzenseManager::VzenseManager(int32_t device_index,std::string camera_name) :
         sessionIndex_(0)
 {
     signal(SIGSEGV, VzenseManager::sigsegv_handler);
-    
+
     color_pub_ = this->create_publisher<sensor_msgs::msg::Image>(camera_name_+"/color/image_raw", 30);
     depth_pub_ = this->create_publisher<sensor_msgs::msg::Image>(camera_name_+"/depth/image_raw", 30);
     ir_pub_ = this->create_publisher<sensor_msgs::msg::Image>(camera_name_+"/ir/image_raw", 30);
     alignedDepth_pub_ = this->create_publisher<sensor_msgs::msg::Image>(camera_name_+"/transformedDepth/image_raw", 30);
     alignedColor_pub_ = this->create_publisher<sensor_msgs::msg::Image>(camera_name_+"/transformedColor/image_raw", 30);
-    
+
     colorinfo_pub_ = this->create_publisher<sensor_msgs::msg::CameraInfo>(camera_name_+"/color/camera_info", 30);
     depthinfo_pub_ = this->create_publisher<sensor_msgs::msg::CameraInfo>(camera_name_+"/depth/camera_info", 30);
     irinfo_pub_ = this->create_publisher<sensor_msgs::msg::CameraInfo>(camera_name_+"/ir/camera_info", 30);
     alignedDepthinfo_pub_ = this->create_publisher<sensor_msgs::msg::CameraInfo>(camera_name_+"/transformedDepth/camera_info", 30);
     alignedColorinfo_pub_ = this->create_publisher<sensor_msgs::msg::CameraInfo>(camera_name_+"/transformedColor/camera_info", 30);
     pointclound2info_pub_ = this->create_publisher<sensor_msgs::msg::CameraInfo>(camera_name_+"/depth/points/camera_info", 30);
-   
+
     pointclound2_pub_ = this->create_publisher<sensor_msgs::msg::PointCloud2>(camera_name_+"/depth/points", 30);
 
     if(initDCAM(device_index))
@@ -39,15 +39,15 @@ VzenseManager::VzenseManager(int32_t device_index,std::string camera_name) :
           100ms, std::bind(&VzenseManager::timeout, this));
     }
 }
-void VzenseManager::sigsegv_handler(int sig) 
+void VzenseManager::sigsegv_handler(int sig)
 {
     signal(SIGSEGV, SIG_DFL);
     cout<<"Segmentation fault, stopping camera driver : %" << sig <<endl;
     rclcpp::shutdown();
-    exit();
+    exit(1);
 }
 bool VzenseManager::initDCAM(int32_t device_index)
-{ 
+{
     VzReturnStatus status = VzReturnStatus::VzRetOK;
     // Initialise the API
     status =VZ_Initialize();
@@ -68,7 +68,7 @@ bool VzenseManager::initDCAM(int32_t device_index)
             RCLCPP_INFO(this->get_logger(), "VzGetDeviceCount failed! %d" ,status);
             return false;
         }
-        RCLCPP_INFO(this->get_logger(), "Get device count: %d" ,device_count); 
+        RCLCPP_INFO(this->get_logger(), "Get device count: %d" ,device_count);
         if (device_count > 0)
         {
             break;
@@ -96,17 +96,17 @@ bool VzenseManager::initDCAM(int32_t device_index)
     RCLCPP_INFO(this->get_logger(), "sn: %s" , pPsDeviceInfo->serialNumber);
 
     VZ_StartStream(deviceHandle_);
-    
+
     /* add user define api call start*/
     // such as call the VZ_SetSpatialFilterEnabled
-   
+
     /*
     status= VZ_SetSpatialFilterEnabled(deviceHandle_,true);
     RCLCPP_INFO( "SetSpatialFilterEnabled status: " << status);
     */
-  
+
     /* add user define api call end*/
- 
+
     set_sensor_intrinsics();
 
     const int BufLen = 64;
@@ -119,8 +119,8 @@ bool VzenseManager::initDCAM(int32_t device_index)
     RCLCPP_INFO(this->get_logger(), "------ the camera is runing ok ------" );
     return true;
 }
-void VzenseManager::timeout() 
-{    
+void VzenseManager::timeout()
+{
     // Get next frame set
     VzFrameReady psReadFrame = {0};
     VzReturnStatus status =  VZ_GetFrameReady(deviceHandle_, 1200, &psReadFrame);
@@ -131,31 +131,31 @@ void VzenseManager::timeout()
     }
     if (1 == psReadFrame.depth)
     {
-        publicImage(VzDepthFrame, depth_pub_); 
+        publicImage(VzDepthFrame, depth_pub_);
     }
     if (1 == psReadFrame.ir)
     {
-        publicImage(VzIRFrame, ir_pub_);           
+        publicImage(VzIRFrame, ir_pub_);
     }
     if (1 == psReadFrame.color)
     {
-        publicImage(VzColorFrame, color_pub_);           
+        publicImage(VzColorFrame, color_pub_);
     }
     if (1 == psReadFrame.transformedDepth)
     {
-        publicImage(VzTransformDepthImgToColorSensorFrame, alignedDepth_pub_);            
+        publicImage(VzTransformDepthImgToColorSensorFrame, alignedDepth_pub_);
     }
     if (1 == psReadFrame.transformedColor)
     {
-        publicImage(VzTransformColorImgToDepthSensorFrame, alignedColor_pub_);            
-    }  
+        publicImage(VzTransformColorImgToDepthSensorFrame, alignedColor_pub_);
+    }
 }
 
 bool VzenseManager::shutDownDCAM()
-{ 
+{
     bool bret = true;
     VzReturnStatus status = VzReturnStatus::VzRetOK;
-     
+
     status = VZ_StopStream(deviceHandle_);
     if (status != VzReturnStatus::VzRetOK)
     {
@@ -178,8 +178,8 @@ bool VzenseManager::shutDownDCAM()
 }
 
 bool VzenseManager::publicImage(const VzFrameType type, rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr &pub)
-{    
-    std::string camera_frame(this->camera_name_ + "_frame"), 
+{
+    std::string camera_frame(this->camera_name_ + "_frame"),
                 color_frame(this->camera_name_ + "_color_frame"),
                 aligneddepth_frame(this->camera_name_ + "_transformedDepth_frame"),
                 alignedcolor_frame(this->camera_name_ + "_transformedColor_frame"),
@@ -190,7 +190,7 @@ bool VzenseManager::publicImage(const VzFrameType type, rclcpp::Publisher<sensor
 
     VzFrame frame = {0};
     VZ_GetFrame(deviceHandle_, type, &frame);
-    
+
     if (frame.pFrameData != NULL)
     {
         int cvMatType = CV_16UC1;
@@ -224,7 +224,7 @@ bool VzenseManager::publicImage(const VzFrameType type, rclcpp::Publisher<sensor
             pcl::PointCloud<pcl::PointXYZRGB> cloud;
             cloud.points.resize(len);
             for (int i = 0; i < len; i++)
-            { 
+            {
                 if (0 != worldV[i].z && worldV[i].z !=65535)
                 {
                     cloud.points[i].x = worldV[i].x/1000;
@@ -233,7 +233,7 @@ bool VzenseManager::publicImage(const VzFrameType type, rclcpp::Publisher<sensor
                     cloud.points[i].r = 255;
                     cloud.points[i].g = 255;
                     cloud.points[i].b = 255;
-                  
+
                 }
             }
             delete [] worldV;
@@ -252,7 +252,7 @@ bool VzenseManager::publicImage(const VzFrameType type, rclcpp::Publisher<sensor
             cvi_.header.frame_id = depth_frame;
             cvi_.encoding = "16UC1";
             cvi_.image = mat;
-            sensor_msgs::msg::Image im_msg;     
+            sensor_msgs::msg::Image im_msg;
             cvi_.toImageMsg(im_msg);
             pub->publish(im_msg);
             ret = true;
@@ -273,7 +273,7 @@ bool VzenseManager::publicImage(const VzFrameType type, rclcpp::Publisher<sensor
             cvi_.toImageMsg(im_msg);
             pub->publish(im_msg);
             ret = true;
-        }    
+        }
             break;
         default:
             ret = false;
@@ -285,9 +285,9 @@ bool VzenseManager::publicImage(const VzFrameType type, rclcpp::Publisher<sensor
     return ret;
 }
 
-void VzenseManager::set_sensor_intrinsics() 
+void VzenseManager::set_sensor_intrinsics()
 {
-    std::string camera_frame(this->camera_name_ + "_frame"), 
+    std::string camera_frame(this->camera_name_ + "_frame"),
                 color_frame(this->camera_name_ + "_color_frame"),
                 aligneddepth_frame(this->camera_name_ + "_transformedDepth_frame"),
                 alignedcolor_frame(this->camera_name_ + "_transformedColor_frame"),
@@ -300,10 +300,10 @@ void VzenseManager::set_sensor_intrinsics()
 
     // Setup tf broadcaster
     static tf2_ros::StaticTransformBroadcaster tf_broadcaster(this);
- 
+
 
     // PsCameraExtrinsicParameters to ROS transform
- 
+
     tf2::Matrix3x3 rotation_matrix(extrinsics_.rotation[0], extrinsics_.rotation[1], extrinsics_.rotation[2],
                                   extrinsics_.rotation[3], extrinsics_.rotation[4], extrinsics_.rotation[5],
                                   extrinsics_.rotation[6], extrinsics_.rotation[7], extrinsics_.rotation[8]);
@@ -333,7 +333,7 @@ void VzenseManager::set_sensor_intrinsics()
     msg.header.frame_id = color_frame;
     msg.child_frame_id = depth_frame;
     tf_broadcaster.sendTransform(msg);
-    
+
     msg.header.frame_id = depth_frame;
     msg.child_frame_id = alignedcolor_frame;
     tf_broadcaster.sendTransform(msg);
@@ -357,12 +357,12 @@ void VzenseManager::set_sensor_intrinsics()
     info_msg.header.frame_id = color_frame;
     info_msg.d = {color_intrinsics_.k1, color_intrinsics_.k2, color_intrinsics_.p1, color_intrinsics_.p2,
                   color_intrinsics_.k3};
-    info_msg.k = {color_intrinsics_.fx, 0, color_intrinsics_.cx, 
+    info_msg.k = {color_intrinsics_.fx, 0, color_intrinsics_.cx,
                     0, color_intrinsics_.fy, color_intrinsics_.cy,
                     0, 0, 1};
     info_msg.p = {color_intrinsics_.fx, 0, color_intrinsics_.cx,
                     0, 0, color_intrinsics_.fy,
-                    color_intrinsics_.cy, 0, 0, 
+                    color_intrinsics_.cy, 0, 0,
                     0, 1, 0};
     info_msg.r.fill(0);
     info_msg.r[0] = 1;
@@ -381,7 +381,7 @@ void VzenseManager::set_sensor_intrinsics()
                     0, 0, depth_intrinsics_.fy,
                     depth_intrinsics_.cy, 0, 0,
                     0, 1, 0};
-    
+
     depth_info_=info_msg;
     alignedColor_info_=info_msg;
 
@@ -392,7 +392,7 @@ void VzenseManager::set_sensor_intrinsics()
     irinfo_pub_->publish(ir_info_);
     alignedColorinfo_pub_->publish(alignedColor_info_);
     alignedDepthinfo_pub_->publish(alignedDepth_info_);
-    
+
     info_msg.header.frame_id = points_frame;
     pointclound2_info_ = info_msg;
     pointclound2info_pub_->publish(pointclound2_info_);
